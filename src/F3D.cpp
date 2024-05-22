@@ -89,16 +89,16 @@ F3DVector F3D::read(int *error)
 
 void F3D::print(F3DVector forces, bool binary, Print *dest)
 {
+    uint32_t timestamp = millis();
+
     if (binary)
     {
-        dest->write(millis(), sizeof(uint32_t));
-        dest->write(forces.x, sizeof(float));
-        dest->write(forces.y, sizeof(float));
-        dest->write(forces.z, sizeof(float));
+        dest->write((uint8_t *)&timestamp, sizeof(uint32_t));
+        dest->write((uint8_t *)&forces, sizeof(F3DVector));
     }
     else
     { // Print as formatted ASCII
-        dest->printf("Timestamp: %d, ", millis());
+        dest->printf("Timestamp: %d, ", timestamp);
         dest->printf("Fx: %3.2f, ", forces.x);
         dest->printf("Fy: %3.2f, ", forces.y);
         dest->printf("Fz: %3.2f", forces.z);
