@@ -16,6 +16,7 @@ F3D f3d = F3D(COMMS_SPI, ss_pin, int_pin, reset_pin);
 
 void setup()
 {
+    Serial.begin(115200);
     f3d.begin();
 }
 
