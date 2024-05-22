@@ -1,0 +1,28 @@
+#######################################
+# Syntax Coloring Map SD
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+F3D	KEYWORD1	
+F3DVector	KEYWORD1	
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin KEYWORD2
+read KEYWORD2
+reset KEYWORD2
+zero KEYWORD2
+version KEYWORD2
+lastError KEYWORD2
+print KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+COMMS_I2C	LITERAL1
+COMMS_SPI	LITERAL1
