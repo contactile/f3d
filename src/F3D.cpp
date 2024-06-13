@@ -1,4 +1,5 @@
 #include <F3D.h>
+#include <assert.h>
 
 F3D::F3D(F3DMode mode, uint8_t inputArg, int interrupt, int nReset)
 {
@@ -10,7 +11,8 @@ F3D::F3D(F3DMode mode, uint8_t inputArg, int interrupt, int nReset)
     }
     else //(mode == COMMS_I2C), default
     {
-        _sensor = new C3DFBS(C3DFBS::COMMS_I2C, inputArg, interrupt, nReset);
+        _i2c_address = inputArg;   
+        _sensor = new C3DFBS(C3DFBS::COMMS_I2C, _i2c_address, interrupt, nReset);
     }
 }
 
@@ -21,10 +23,67 @@ F3D::~F3D()
 
 void F3D::begin()
 {
+    if(_comms_mode == COMMS_I2C)
+    {
+        // Check that the address is valid
+        assert("I2C address out of valid range (0x50-0x72)" && _i2c_address > 0x4F && _i2c_address < 0x73);   
+        assert("I2C address 0x55 is reserved" && _i2c_address != 0x55);   
+    } 
+
     // Place the sensor into the selected comms mode via bootstrapping
     _sensor->setCommunicationProtocol(_comms_mode);
     // Initialise the sensor
     _sensor->begin();
+}
+
+bool F3D::connect()
+{
+    // Set the I2C address if in I2C mode
+    if(_comms_mode == COMMS_I2C)
+    {
+        // Try to locate the sensor    
+        if(ping(_i2c_address)) // Try the address specified in the constructor
+        {
+            // Found a device with the expected address. Fall-thru to verify connection
+        }    
+        else if(ping(DEFAULT_I2C_ADDRESS)) // Try the default address
+        {
+            _sensor->changeI2CAddress(_i2c_address, DEFAULT_I2C_ADDRESS);
+        }
+        else
+        {   // Nothing responded to the default address.
+
+            // Reset the sensor...
+            _sensor->reset();
+
+            // Now try to locate a 3DFBS device on another address.
+            // Scan the valid range of addresses for C3DFBS sensors to see if any respond.
+            for(int current_address=0x50; current_address<0x72; current_address++)
+            {
+                if(current_address == 0x55)
+                    continue; // 0x55 is a reserved address
+
+                if(ping(current_address)) 
+                {   // Found device on the I2C bus.
+                    
+                    // Now change its address to that specified in the constructor
+                    auto status = _sensor->changeI2CAddress(_i2c_address, current_address);
+
+                    if(status == C3DFBS::SUCCESS)
+                        break; // Found a device and successfully changed its address
+                }                
+            }
+        }
+    }
+
+    // Verify connection
+    return _sensor->isAlive();
+}
+
+bool F3D::ping(int address)
+{
+    Wire.beginTransmission(address);
+    return (Wire.endTransmission() == 0);
 }
 
 void F3D::start(int *error)
@@ -124,8 +183,20 @@ void F3D::stop(int *error)
 
 void F3D::reset(int *error)
 {
+    bool was_streaming = _streaming;
+
     _sensor->reset();
     _streaming = false;
+
+    if (_status != C3DFBS::SUCCESS)
+    {
+        setError(error, _status);
+        return;
+    }    
+    
+    // Try to start stream again
+    if (was_streaming)
+        start(error);
 
     if (_status != C3DFBS::SUCCESS)
     {
