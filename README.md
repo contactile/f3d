@@ -59,7 +59,24 @@ F3D f3d = F3D(COMMS_SPI, ss_pin, int_pin, reset_pin);
 
 void setup()
 {
+    Serial.begin(115200);
+
+    // Wait for serial connection
+    while(!Serial);
     f3d.begin();
+
+    // Establish a connection with the sensor
+    Serial.println("Establishing a connection...");
+    while(!f3d.connect())
+    {
+        Serial.println(" Error: F3D sensor missing - check connections.");
+        delay(1000);
+    }
+
+    String ver = f3d.version(&error);
+    Serial.printf(" OK. Connected to F3D sensor, version %s\n", ver.c_str());
+
+    f3d.zero();
 }
 
 void loop()
@@ -80,6 +97,21 @@ void loop()
 
         // Delay to prevent overwhelming the serial port
         delay(20);
+    }
+
+    // Receive basic serial commands
+    while(Serial.available())
+    {
+        char c = Serial.read();
+
+        if(c == 'b' || c == 'z')
+        {   // bias/zero the sensor
+            f3d.zero();
+        }
+        if(c == 'r')
+        {   // reset the sensor
+            f3d.reset();
+        }
     }
 }
 ```
